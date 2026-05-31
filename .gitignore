@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Pipeline outputs
+*.out.json
+/tmp_out/
+
+# Node / web
+node_modules/
+.next/

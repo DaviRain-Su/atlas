@@ -1,0 +1,26 @@
+[project]
+name = "atlas-engine"
+version = "0.1.0"
+description = "Atlas decomposition engine — deductive (math/theorem DAG), v1"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.6"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+# The real extractor needs the Anthropic SDK + an API key; kept optional so the
+# deterministic core installs and tests without network or credentials.
+claude = ["anthropic>=0.39"]
+
+[project.scripts]
+atlas = "atlas_engine.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["atlas_engine*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
