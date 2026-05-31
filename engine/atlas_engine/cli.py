@@ -14,9 +14,11 @@ import argparse
 import json
 import sys
 
+from .active import generate_recall_items
 from .evals import evaluate
 from .extract import FakeExtractor
 from .fixtures import SOURCES, build_fixture_graph, build_gold_graph
+from .learner import LearnerModel, Rating
 from .modality import decide_modality
 from .pipeline import run_pipeline
 
@@ -27,6 +29,7 @@ def _run_demo(as_json: bool) -> int:
     report = evaluate(result, build_gold_graph())
 
     if as_json:
+        lm = LearnerModel(result.graph)
         payload = {
             "ok": result.ok,
             "cycle": result.cycle,
@@ -37,6 +40,14 @@ def _run_demo(as_json: bool) -> int:
             "modalities": {
                 nid: decide_modality(n.features).modality.value
                 for nid, n in ((n.id, n) for n in result.graph.nodes)
+            },
+            "recall_items": [
+                {"node_id": it.node_id, "kind": it.kind, "grounded": it.grounded}
+                for it in generate_recall_items(result.graph, SOURCES)
+            ],
+            "learner": {
+                "placement_order": lm.placement_nodes(),
+                "frontier": lm.learning_frontier(),
             },
             "evals": {
                 "node_f1": round(report.nodes.f1, 3),
@@ -62,6 +73,28 @@ def _run_demo(as_json: bool) -> int:
     for n in result.graph.nodes:
         d = decide_modality(n.features)
         print(f"  - {n.label}: {d.modality.value}")
+
+    # Active processing: one grounded recall item per verified node.
+    items = generate_recall_items(result.graph, SOURCES)
+    print(f"\nactive recall items (grounded): {len(items)}")
+    for it in items[:3]:
+        print(f"  - [{it.kind}] {it.prompt}")
+
+    # Learner model: cold-start placement + walking the frontier (PRD §5.2.5/§11.2).
+    lm = LearnerModel(result.graph)
+    print("\nlearner model (cold start):")
+    print(f"  placement probe order : {lm.placement_nodes()}")
+    print(f"  frontier (nothing learned yet): {lm.learning_frontier()}")
+    print("  walking the frontier (review each node to mastery):")
+    for _ in range(len(result.graph.nodes)):
+        frontier = lm.learning_frontier()
+        if not frontier:
+            break
+        nid = frontier[0]
+        while lm.progress[nid].p_known < 0.95:  # repeated success -> mastery
+            lm.review(nid, Rating.GOOD)
+        print(f"    mastered {label.get(nid)!r} -> next frontier {lm.learning_frontier()}")
+
     print("\nevals vs gold set:")
     print("  " + report.summary().replace("\n", "\n  "))
     return 0 if result.ok else 1

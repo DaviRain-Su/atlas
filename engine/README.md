@@ -13,6 +13,8 @@ a typed, provenance-backed knowledge graph. See [`../docs/ARCHITECTURE.md`](../d
 | `graph.py` | Assembly, cycle detection, learning-order topological sort | §4.5 |
 | `extract.py` | `Extractor` Protocol + `FakeExtractor` + node dedup | §4.3 |
 | `pipeline.py` | Orchestration: extract → dedup → verify → assemble | §3–4 |
+| `learner.py` | Learner model: BKT mastery + FSRS scheduling + DAG-prior cold start | §7 |
+| `active.py` | Active processing: grounded retrieval-practice items per node type | §7 |
 | `evals.py` | Precision/recall vs gold, grounded_rate, DAG health | §9 |
 | `fixtures.py` | A tiny convex-optimization graph with real source spans | §11 |
 
@@ -34,8 +36,9 @@ atlas demo --json  # machine-readable
 ```
 
 `atlas demo` runs extract → dedup → verify → assemble end-to-end and prints the
-learning order, per-node modality, and evals (node/edge F1, grounded_rate,
-cycle count, orphan rate).
+learning order, per-node modality, grounded recall items, a cold-start learner
+walking the dependency frontier to mastery, and evals (node/edge F1,
+grounded_rate, cycle count, orphan rate).
 
 ## Not yet implemented (needs key / network / a real book)
 
@@ -43,4 +46,10 @@ cycle count, orphan rate).
   by network policy (book hosts disallowed) — implement where the PDF is reachable.
 - `ClaudeExtractor` — multi-agent Claude extraction with structured output,
   citations, and prompt caching. Needs `ANTHROPIC_API_KEY` and `pip install -e ".[claude]"`.
-- Learner model (BKT + FSRS) and the FastAPI/Next.js output layer.
+- The FastAPI/Next.js output layer (graph UI + node-level learning). The learner
+  model and active-processing layers it will sit on top of are implemented
+  (`learner.py`, `active.py`).
+
+> Note on FSRS: `learner.py` implements the FSRS-5 curve with published default
+> weights; the behavioral invariants are unit-tested, but validate numeric
+> parity against `py-fsrs` before production scheduling.
